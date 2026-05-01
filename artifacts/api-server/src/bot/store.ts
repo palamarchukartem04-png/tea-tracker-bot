@@ -96,3 +96,22 @@ export function getAvgSalePricePerGram(userId: number): number {
 export function getProfit(userId: number): number {
   return getTotalRevenue(userId) - getTotalCOGS(userId);
 }
+
+export function getNetCash(userId: number): number {
+  return getTotalRevenue(userId) - getTotalSpent(userId);
+}
+
+export function getLastSaleRevenue(userId: number): number | null {
+  const user = getUser(userId);
+  if (user.sales.length === 0) return null;
+  const sorted = [...user.sales].sort(
+    (a, b) => b.date.getTime() - a.date.getTime()
+  );
+  return sorted[0]!.totalRevenue;
+}
+
+export function getEffectiveCapital(userId: number): number {
+  const netCash = getNetCash(userId);
+  const stockValue = getTotalStock(userId) * getAvgCostPerGram(userId);
+  return netCash + stockValue;
+}

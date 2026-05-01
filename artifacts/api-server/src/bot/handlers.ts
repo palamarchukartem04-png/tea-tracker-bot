@@ -9,6 +9,9 @@ import {
   getAvgSalePricePerGram,
   getProfit,
   getTotalCOGS,
+  getNetCash,
+  getLastSaleRevenue,
+  getEffectiveCapital,
 } from "./store.js";
 
 function genId(): string {
@@ -125,6 +128,8 @@ export function handleStats(bot: TelegramBot, msg: TelegramBot.Message): void {
   const cogs = getTotalCOGS(userId);
   const avgCost = getAvgCostPerGram(userId);
   const avgSalePrice = getAvgSalePricePerGram(userId);
+  const netCash = getNetCash(userId);
+  const effectiveCapital = getEffectiveCapital(userId);
 
   const totalPurchasedGrams = user.purchases.reduce((s, p) => s + p.grams, 0);
   const totalSoldGrams = user.sales.reduce((s, p) => s + p.grams, 0);
@@ -138,6 +143,11 @@ export function handleStats(bot: TelegramBot, msg: TelegramBot.Message): void {
     avgSalePrice > 0
       ? `├ Вартість залишку (закупівля): ${fmt(stockValueAtCost)} грн\n├ Вартість залишку (продажна): ${fmt(stockValueAtSalePrice)} грн\n├ Потенційний прибуток із залишку: *+${fmt(potentialProfit)} грн*`
       : `├ Вартість залишку (закупівля): ${fmt(stockValueAtCost)} грн`;
+
+  const netCashLine =
+    netCash >= 0
+      ? `├ Гроші в кишені: *+${fmt(netCash)} грн* ✅`
+      : `├ Вкладено своїх (ще не відбито): *${fmt(Math.abs(netCash))} грн*`;
 
   const text = `📊 *Статистика*
 
@@ -154,7 +164,13 @@ export function handleStats(bot: TelegramBot, msg: TelegramBot.Message): void {
 ├ Середня ціна продажу: ${fmt(avgSalePrice > 0 ? avgSalePrice : 0)} грн/г
 ├ Собівартість проданого: ${fmt(cogs)} грн
 ${stockValueLine}
-└ *Прибуток (реалізований): ${profit >= 0 ? "+" : ""}${fmt(profit)} грн*`;
+└ *Прибуток (реалізований): ${profit >= 0 ? "+" : ""}${fmt(profit)} грн*
+
+*💼 Грошовий баланс:*
+├ Всього витрачено: ${fmt(spent)} грн
+├ Всього виручено: ${fmt(revenue)} грн
+${netCashLine}
+└ *Загальний капітал (гроші + товар): ${effectiveCapital >= 0 ? "+" : ""}${fmt(effectiveCapital)} грн*`;
 
   bot.sendMessage(msg.chat.id, text, {
     parse_mode: "Markdown",
@@ -272,6 +288,7 @@ export function handleTextInput(
       const grams = user.tempData["grams"]!;
       const cost = value;
       const pricePerGram = cost / grams;
+      const lastSaleRevenue = getLastSaleRevenue(userId);
       user.purchases.push({
         id: genId(),
         date: new Date(),
@@ -284,13 +301,33 @@ export function handleTextInput(
       setUser(userId, user);
 
       const stock = getTotalStock(userId);
+
+      let cycleNote = "";
+      if (lastSaleRevenue !== null) {
+        const pocketed = lastSaleRevenue - cost;
+        if (pocketed > 0) {
+          cycleNote =
+            `\n\n💰 *Цикл продаж → закупівля:*\n` +
+            `├ Виручка з продажу: ${fmt(lastSaleRevenue)} грн\n` +
+            `├ Витрачено на нову партію: ${fmt(cost)} грн\n` +
+            `└ *В кишеню: +${fmt(pocketed)} грн* 🎉`;
+        } else if (pocketed < 0) {
+          cycleNote =
+            `\n\n⚠️ *Цикл продаж → закупівля:*\n` +
+            `├ Виручка з продажу: ${fmt(lastSaleRevenue)} грн\n` +
+            `├ Витрачено на нову партію: ${fmt(cost)} грн\n` +
+            `└ *Доплачено зі своїх: ${fmt(Math.abs(pocketed))} грн*`;
+        }
+      }
+
       bot.sendMessage(
         chatId,
         `✅ *Закупівля записана!*\n\n` +
           `├ Куплено: ${fmt(grams)} г\n` +
           `├ Сплачено: ${fmt(cost)} грн\n` +
           `├ Ціна за грам: ${fmt(pricePerGram)} грн/г\n` +
-          `└ Залишок на складі: *${fmt(stock)} г*`,
+          `└ Залишок на складі: *${fmt(stock)} г*` +
+          cycleNote,
         { parse_mode: "Markdown", reply_markup: getMainKeyboard() }
       );
       break;
