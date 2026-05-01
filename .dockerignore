@@ -1,0 +1,8 @@
+node_modules
+artifacts/bot-landing
+artifacts/mockup-sandbox
+artifacts/api-server/dist
+.git
+.replit
+*.md
+attached_assets
