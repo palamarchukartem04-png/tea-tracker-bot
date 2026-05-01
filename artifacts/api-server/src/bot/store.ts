@@ -85,6 +85,14 @@ export function getAvgCostPerGram(userId: number): number {
   return totalCost / totalGrams;
 }
 
+export function getAvgSalePricePerGram(userId: number): number {
+  const user = getUser(userId);
+  const totalGrams = user.sales.reduce((s, p) => s + p.grams, 0);
+  const totalRevenue = user.sales.reduce((s, p) => s + p.totalRevenue, 0);
+  if (totalGrams === 0) return 0;
+  return totalRevenue / totalGrams;
+}
+
 export function getProfit(userId: number): number {
   return getTotalRevenue(userId) - getTotalCOGS(userId);
 }

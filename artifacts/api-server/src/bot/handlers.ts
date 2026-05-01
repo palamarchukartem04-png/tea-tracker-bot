@@ -6,6 +6,7 @@ import {
   getTotalSpent,
   getTotalRevenue,
   getAvgCostPerGram,
+  getAvgSalePricePerGram,
   getProfit,
   getTotalCOGS,
 } from "./store.js";
@@ -123,15 +124,20 @@ export function handleStats(bot: TelegramBot, msg: TelegramBot.Message): void {
   const profit = getProfit(userId);
   const cogs = getTotalCOGS(userId);
   const avgCost = getAvgCostPerGram(userId);
+  const avgSalePrice = getAvgSalePricePerGram(userId);
 
   const totalPurchasedGrams = user.purchases.reduce((s, p) => s + p.grams, 0);
   const totalSoldGrams = user.sales.reduce((s, p) => s + p.grams, 0);
   const totalPersonalGrams = user.personalUse.reduce((s, p) => s + p.grams, 0);
 
-  const avgSalePrice =
-    totalSoldGrams > 0 ? revenue / totalSoldGrams : 0;
+  const stockValueAtCost = stock * avgCost;
+  const stockValueAtSalePrice = stock * avgSalePrice;
+  const potentialProfit = stockValueAtSalePrice - stockValueAtCost;
 
-  const stockValue = stock * avgCost;
+  const stockValueLine =
+    avgSalePrice > 0
+      ? `├ Вартість залишку (закупівля): ${fmt(stockValueAtCost)} грн\n├ Вартість залишку (продажна): ${fmt(stockValueAtSalePrice)} грн\n├ Потенційний прибуток із залишку: *+${fmt(potentialProfit)} грн*`
+      : `├ Вартість залишку (закупівля): ${fmt(stockValueAtCost)} грн`;
 
   const text = `📊 *Статистика*
 
@@ -145,10 +151,10 @@ export function handleStats(bot: TelegramBot, msg: TelegramBot.Message): void {
 ├ Витрачено на закупівлю: ${fmt(spent)} грн
 ├ Середня ціна закупівлі: ${fmt(avgCost)} грн/г
 ├ Виручка від продажів: ${fmt(revenue)} грн
-├ Середня ціна продажу: ${fmt(avgSalePrice)} грн/г
+├ Середня ціна продажу: ${fmt(avgSalePrice > 0 ? avgSalePrice : 0)} грн/г
 ├ Собівартість проданого: ${fmt(cogs)} грн
-├ Вартість залишку: ${fmt(stockValue)} грн
-└ *Прибуток: ${profit >= 0 ? "+" : ""}${fmt(profit)} грн*`;
+${stockValueLine}
+└ *Прибуток (реалізований): ${profit >= 0 ? "+" : ""}${fmt(profit)} грн*`;
 
   bot.sendMessage(msg.chat.id, text, {
     parse_mode: "Markdown",
