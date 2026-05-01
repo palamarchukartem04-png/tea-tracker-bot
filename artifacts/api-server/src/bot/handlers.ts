@@ -333,6 +333,13 @@ export function handleTextInput(
       setUser(userId, user);
 
       const stock = getTotalStock(userId);
+
+      const canBuyGrams = avgCost > 0 ? Math.floor(revenue / avgCost) : 0;
+      const reinvestLine =
+        avgCost > 0
+          ? `\n\n💡 *На виручку (${fmt(revenue)} грн) можна докупити:*\n└ ~${canBuyGrams} г нового товару (по ${fmt(avgCost)} грн/г)`
+          : "";
+
       bot.sendMessage(
         chatId,
         `✅ *Продаж записано!*\n\n` +
@@ -340,7 +347,8 @@ export function handleTextInput(
           `├ Виручка: ${fmt(revenue)} грн\n` +
           `├ Ціна за грам: ${fmt(pricePerGram)} грн/г\n` +
           `├ Прибуток з продажу: *${profit >= 0 ? "+" : ""}${fmt(profit)} грн*\n` +
-          `└ Залишок на складі: *${fmt(stock)} г*`,
+          `└ Залишок на складі: *${fmt(stock)} г*` +
+          reinvestLine,
         { parse_mode: "Markdown", reply_markup: getMainKeyboard() }
       );
       break;
