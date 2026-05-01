@@ -6,6 +6,7 @@ import {
   handlePurchase,
   handleSale,
   handlePersonalUse,
+  handleSeller,
   handleStats,
   handleLog,
   handleReset,
@@ -40,6 +41,9 @@ export function startBot(): void {
         break;
       case "🍵 Особисте":
         handlePersonalUse(bot, msg);
+        break;
+      case "👤 Продавець":
+        handleSeller(bot, msg);
         break;
       case "📊 Статистика":
         handleStats(bot, msg);

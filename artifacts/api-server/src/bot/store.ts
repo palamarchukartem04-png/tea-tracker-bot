@@ -20,17 +20,38 @@ export interface PersonalUse {
   grams: number;
 }
 
+export interface SellerGive {
+  id: string;
+  date: Date;
+  grams: number;
+  fixedPricePerGram: number;
+  expectedPayment: number;
+}
+
+export interface SellerReceive {
+  id: string;
+  date: Date;
+  amount: number;
+}
+
 export interface UserState {
   purchases: Purchase[];
   sales: Sale[];
   personalUse: PersonalUse[];
+  sellerGives: SellerGive[];
+  sellerReceives: SellerReceive[];
+  defaultSellerPrice: number;
   awaitingInput:
     | null
     | "purchase_grams"
     | "purchase_cost"
     | "sale_grams"
     | "sale_revenue"
-    | "personal_grams";
+    | "personal_grams"
+    | "seller_give_grams"
+    | "seller_give_price"
+    | "seller_receive_amount"
+    | "seller_set_price";
   tempData: Record<string, number>;
 }
 
@@ -42,6 +63,9 @@ export function getUser(userId: number): UserState {
       purchases: [],
       sales: [],
       personalUse: [],
+      sellerGives: [],
+      sellerReceives: [],
+      defaultSellerPrice: 24,
       awaitingInput: null,
       tempData: {},
     });
@@ -58,7 +82,8 @@ export function getTotalStock(userId: number): number {
   const totalPurchased = user.purchases.reduce((s, p) => s + p.grams, 0);
   const totalSold = user.sales.reduce((s, p) => s + p.grams, 0);
   const totalPersonal = user.personalUse.reduce((s, p) => s + p.grams, 0);
-  return totalPurchased - totalSold - totalPersonal;
+  const totalGivenToSeller = user.sellerGives.reduce((s, g) => s + g.grams, 0);
+  return totalPurchased - totalSold - totalPersonal - totalGivenToSeller;
 }
 
 export function getTotalSpent(userId: number): number {
@@ -98,7 +123,9 @@ export function getProfit(userId: number): number {
 }
 
 export function getNetCash(userId: number): number {
-  return getTotalRevenue(userId) - getTotalSpent(userId);
+  const user = getUser(userId);
+  const sellerReceived = user.sellerReceives.reduce((s, r) => s + r.amount, 0);
+  return getTotalRevenue(userId) + sellerReceived - getTotalSpent(userId);
 }
 
 export function getLastSaleRevenue(userId: number): number | null {
@@ -113,5 +140,25 @@ export function getLastSaleRevenue(userId: number): number | null {
 export function getEffectiveCapital(userId: number): number {
   const netCash = getNetCash(userId);
   const stockValue = getTotalStock(userId) * getAvgCostPerGram(userId);
-  return netCash + stockValue;
+  const sellerDebt = getSellerDebt(userId);
+  return netCash + stockValue + sellerDebt;
+}
+
+export function getSellerTotalGiven(userId: number): number {
+  const user = getUser(userId);
+  return user.sellerGives.reduce((s, g) => s + g.grams, 0);
+}
+
+export function getSellerTotalExpected(userId: number): number {
+  const user = getUser(userId);
+  return user.sellerGives.reduce((s, g) => s + g.expectedPayment, 0);
+}
+
+export function getSellerTotalReceived(userId: number): number {
+  const user = getUser(userId);
+  return user.sellerReceives.reduce((s, r) => s + r.amount, 0);
+}
+
+export function getSellerDebt(userId: number): number {
+  return getSellerTotalExpected(userId) - getSellerTotalReceived(userId);
 }
