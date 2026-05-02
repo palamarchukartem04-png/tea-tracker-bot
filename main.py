@@ -1,33 +1,33 @@
 import os
 import telebot
+from flask import Flask
+from threading import Thread
 
 TOKEN = os.getenv("BOT_TOKEN")
-
 if not TOKEN:
-    raise ValueError("BOT_TOKEN не знайдено. Додай його в Railway → Variables")
+    raise ValueError("BOT_TOKEN не знайдено")
 
 bot = telebot.TeleBot(TOKEN)
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+Thread(target=run_web).start()
+
 @bot.message_handler(commands=["start"])
 def start(message):
-    bot.send_message(
-        message.chat.id,
-        "✅ Бот запущений і працює 24/7 на Railway!"
-    )
-
-@bot.message_handler(commands=["help"])
-def help_cmd(message):
-    bot.send_message(
-        message.chat.id,
-        "Напиши /start або будь-яке повідомлення."
-    )
+    bot.send_message(message.chat.id, "✅ Бот працює на Render")
 
 @bot.message_handler(func=lambda message: True)
 def echo(message):
-    bot.send_message(
-        message.chat.id,
-        f"Ти написав: {message.text}"
-    )
+    bot.send_message(message.chat.id, message.text)
 
 print("Bot started...")
 bot.infinity_polling(skip_pending=True)
